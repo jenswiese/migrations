@@ -85,6 +85,9 @@ class Version
     /** The array of collected SQL statements for this version */
     private $sql = [];
 
+    /** The array of collected rollback SQL statements for this version */
+    private $rollbackSql = [];
+
     /** The array of collected parameters for SQL statements for this version */
     private $params = [];
 
@@ -163,7 +166,10 @@ class Version
         $this->configuration->createMigrationTable();
         $this->connection->$action(
             $this->configuration->getMigrationsTableName(),
-            [$this->configuration->getMigrationsColumnName() => $this->version]
+            [
+                $this->configuration->getMigrationsColumnName() => $this->version,
+                $this->configuration->getRollbackSqlColumnName() => json_encode($this->rollbackSql)
+            ]
         );
     }
 
@@ -194,6 +200,20 @@ class Version
             if (!empty($params)) {
                 $this->addQueryParams($params, $types);
             }
+        }
+    }
+
+    /**
+     * Add some SQL queries to rollback corresponding sql of this versions migration
+     *
+     * @param array|string $sql
+     */
+    private function addRollbackSql($sql)
+    {
+        if (is_array($sql)) {
+            array_walk($sql, array($this, __FUNCTION__));
+        } else {
+            $this->rollbackSql[] = $sql;
         }
     }
 
@@ -290,6 +310,7 @@ class Version
             $this->migration->$direction($toSchema);
 
             $this->addSql($this->schemaProvider->getSqlDiffToMigrate($fromSchema, $toSchema));
+            $this->addRollbackSql($this->schemaProvider->getSqlDiffToMigrate($toSchema, $fromSchema));
 
             $this->executeRegisteredSql($dryRun, $timeAllQueries);
 

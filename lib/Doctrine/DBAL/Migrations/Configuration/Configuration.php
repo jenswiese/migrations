@@ -111,6 +111,13 @@ class Configuration
     private $migrationsColumnName = 'version';
 
     /**
+     * The column name to track corresponding roll sql
+     *
+     * @var string
+     */
+    private $rollbackSqlColumnName = 'rollback_sql';
+
+    /**
      * The path to a directory where new migration classes will be written
      *
      * @var string
@@ -315,6 +322,22 @@ class Configuration
     public function getMigrationsColumnName()
     {
         return $this->migrationsColumnName;
+    }
+
+    /**
+     * @param string $rollbackSqlColumnName
+     */
+    public function setRollbackSqlColumnName($rollbackSqlColumnName)
+    {
+        $this->rollbackSqlColumnName = $rollbackSqlColumnName;
+    }
+
+    /**
+     * @return string
+     */
+    public function getRollbackSqlColumnName()
+    {
+        return $this->rollbackSqlColumnName;
     }
 
     /**
@@ -726,10 +749,19 @@ class Configuration
         }
 
         $columns = [
-            $this->migrationsColumnName => new Column($this->migrationsColumnName, Type::getType('string'), ['length' => 255]),
+            $this->getMigrationsColumnName() => new Column(
+                $this->getMigrationsColumnName(),
+                Type::getType('string'),
+                ['length' => 255]
+            ),
+            $this->getRollbackSqlColumnName() => new Column(
+                $this->getRollbackSqlColumnName(),
+                Type::getType('text')
+            ),
         ];
-        $table = new Table($this->migrationsTableName, $columns);
-        $table->setPrimaryKey([$this->migrationsColumnName]);
+
+        $table = new Table($this->getMigrationsTableName(), $columns);
+        $table->setPrimaryKey([$this->getMigrationsColumnName()]);
         $this->connection->getSchemaManager()->createTable($table);
 
         $this->migrationTableCreated = true;
